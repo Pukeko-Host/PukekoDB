@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jan 27, 2020 at 08:09 PM
--- Server version: 10.3.17-MariaDB-0+deb10u1-log
--- PHP Version: 7.3.11-1~deb10u1
+-- Generation Time: Feb 24, 2020 at 02:03 PM
+-- Server version: 10.3.22-MariaDB-0+deb10u1-log
+-- PHP Version: 7.3.14-1~deb10u1
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
@@ -21,6 +21,57 @@ SET time_zone = "+00:00";
 --
 -- Database: `pukekohost`
 --
+CREATE DATABASE IF NOT EXISTS `pukekohost` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `pukekohost`;
+
+DELIMITER $$
+--
+-- Procedures
+--
+DROP PROCEDURE IF EXISTS `AddGuild`$$
+CREATE DEFINER=`takahe`@`localhost` PROCEDURE `AddGuild` (IN `pId` BIGINT(22) UNSIGNED, IN `pIcon` VARCHAR(34), IN `pName` VARCHAR(100) CHARSET utf8mb4, IN `pUserId` BIGINT(22) UNSIGNED)  BEGIN
+	IF EXISTS(SELECT GuildId FROM guild WHERE GuildId = pId) THEN
+    	UPDATE guild SET Icon = pIcon, Name = pName WHERE GuildId = pId;
+    ELSE
+    	INSERT INTO guild(GuildId,Icon,Name) VALUES(pId,pIcon,pName);
+    END IF;
+    IF NOT EXISTS(SELECT * FROM userguild WHERE userId = pUserId AND guildId = pId) THEN
+   		INSERT INTO userguild(userId,guildId) VALUES(pUserId,pId);
+    END IF;
+END$$
+
+DROP PROCEDURE IF EXISTS `AddUser`$$
+CREATE DEFINER=`takahe`@`localhost` PROCEDURE `AddUser` (IN `pId` BIGINT(22) UNSIGNED, IN `pUsername` VARCHAR(32) CHARSET utf8, IN `pDiscriminator` SMALLINT(4) UNSIGNED, IN `pEmail` TINYTEXT, OUT `UserId` INT UNSIGNED)  BEGIN
+    IF EXISTS(SELECT DiscordId FROM user WHERE DiscordId = pId) THEN
+    	IF pUsername IS NOT NULL THEN
+    		UPDATE user SET Username = pUsername, Discriminator = pDiscriminator, Email = pEmail WHERE DiscordId = pId;
+    	END IF;
+    ELSE
+		INSERT INTO user(DiscordId,Username,Discriminator,Email)
+		VALUES(pId, pUsername, pDiscriminator, pEmail);
+	END IF;
+    SELECT Id INTO @UserId FROM user WHERE DiscordId = pId;
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `error`
+--
+
+DROP TABLE IF EXISTS `error`;
+CREATE TABLE `error` (
+  `GMSId` int(10) UNSIGNED DEFAULT NULL,
+  `GameserverId` int(10) UNSIGNED DEFAULT NULL,
+  `TransactionId` int(10) UNSIGNED DEFAULT NULL,
+  `DiscordAlert` bigint(22) UNSIGNED DEFAULT NULL,
+  `Description` text DEFAULT NULL,
+  `Resolved` tinyint(1) NOT NULL DEFAULT 0,
+  `ResolutionMessage` tinytext DEFAULT NULL,
+  `ResolutionMessageSeen` tinyint(1) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
 
@@ -28,10 +79,7 @@ SET time_zone = "+00:00";
 -- Table structure for table `game`
 --
 
-DROP DATABASE `pukekohost`;
-CREATE DATABASE `pukekohost`;
-USE `pukekohost`;
-
+DROP TABLE IF EXISTS `game`;
 CREATE TABLE `game` (
   `Id` int(10) UNSIGNED NOT NULL,
   `Name` varchar(255) NOT NULL,
@@ -49,11 +97,16 @@ CREATE TABLE `game` (
 -- Table structure for table `gameserver`
 --
 
+DROP TABLE IF EXISTS `gameserver`;
 CREATE TABLE `gameserver` (
   `Id` int(10) UNSIGNED NOT NULL,
   `GameId` int(10) UNSIGNED NOT NULL,
+  `TierId` tinyint(1) UNSIGNED NOT NULL,
   `GMSId` int(10) UNSIGNED NOT NULL,
   `OwnerId` bigint(22) UNSIGNED NOT NULL,
+  `GuildId` bigint(22) UNSIGNED DEFAULT NULL COMMENT 'Discord Server Id',
+  `ChatId` bigint(22) UNSIGNED DEFAULT NULL COMMENT 'Discord Text Channel',
+  `Name` tinytext NOT NULL,
   `Port` smallint(5) UNSIGNED NOT NULL COMMENT 'Must be unique amongst active gameservers in one gms',
   `Active` tinyint(1) NOT NULL DEFAULT 1,
   `Running` tinyint(1) NOT NULL DEFAULT 0,
@@ -69,6 +122,7 @@ CREATE TABLE `gameserver` (
 -- Table structure for table `gameserverport`
 --
 
+DROP TABLE IF EXISTS `gameserverport`;
 CREATE TABLE `gameserverport` (
   `GameId` int(10) UNSIGNED NOT NULL,
   `TierId` tinyint(1) UNSIGNED NOT NULL,
@@ -81,6 +135,7 @@ CREATE TABLE `gameserverport` (
 -- Table structure for table `gamesupport`
 --
 
+DROP TABLE IF EXISTS `gamesupport`;
 CREATE TABLE `gamesupport` (
   `ServerID` int(11) UNSIGNED NOT NULL,
   `GameID` int(11) UNSIGNED NOT NULL
@@ -92,6 +147,7 @@ CREATE TABLE `gamesupport` (
 -- Table structure for table `gametier`
 --
 
+DROP TABLE IF EXISTS `gametier`;
 CREATE TABLE `gametier` (
   `GameId` int(10) UNSIGNED NOT NULL,
   `TierNumber` tinyint(1) UNSIGNED NOT NULL DEFAULT 1,
@@ -104,11 +160,13 @@ CREATE TABLE `gametier` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `gms`
+-- Table structure for table `gsms`
 --
 
-CREATE TABLE `gms` (
+DROP TABLE IF EXISTS `gsms`;
+CREATE TABLE `gsms` (
   `Id` int(10) UNSIGNED NOT NULL,
+  `Perks` varchar(200) NOT NULL,
   `Specs` varchar(200) NOT NULL,
   `InitRate` decimal(4,2) NOT NULL DEFAULT 0.99 COMMENT 'One time initialization fee',
   `UptimeRate` decimal(4,2) NOT NULL DEFAULT 0.05 COMMENT 'Hourly rate',
@@ -121,12 +179,26 @@ CREATE TABLE `gms` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `guild`
+--
+
+DROP TABLE IF EXISTS `guild`;
+CREATE TABLE `guild` (
+  `GuildId` bigint(22) UNSIGNED NOT NULL,
+  `Icon` varchar(34) NOT NULL,
+  `Name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `transaction`
 --
 
+DROP TABLE IF EXISTS `transaction`;
 CREATE TABLE `transaction` (
   `Id` int(11) UNSIGNED NOT NULL,
-  `UserId` bigint(22) UNSIGNED NOT NULL,
+  `UserId` int(10) UNSIGNED NOT NULL,
   `ServerId` int(10) UNSIGNED DEFAULT NULL,
   `PayPalId` int(11) UNSIGNED DEFAULT NULL,
   `Balance` decimal(5,2) NOT NULL COMMENT 'Maximum $999 in one transaction',
@@ -140,15 +212,41 @@ CREATE TABLE `transaction` (
 -- Table structure for table `user`
 --
 
+DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
-  `DiscordId` bigint(22) UNSIGNED NOT NULL,
+  `Id` int(10) UNSIGNED NOT NULL,
+  `DiscordId` bigint(22) UNSIGNED DEFAULT NULL,
   `Username` varchar(32) CHARACTER SET utf8 COLLATE utf8_bin DEFAULT NULL,
-  `Discriminator` smallint(4) UNSIGNED NOT NULL
+  `Password` varchar(255) DEFAULT NULL,
+  `Discriminator` smallint(4) UNSIGNED DEFAULT NULL,
+  `Email` tinytext NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `userguild`
+--
+
+DROP TABLE IF EXISTS `userguild`;
+CREATE TABLE `userguild` (
+  `userId` bigint(22) UNSIGNED NOT NULL,
+  `guildId` bigint(22) UNSIGNED NOT NULL,
+  `Pos` tinyint(3) UNSIGNED DEFAULT NULL,
+  `guildFolder` bigint(22) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `error`
+--
+ALTER TABLE `error`
+  ADD KEY `TransactionFault` (`TransactionId`),
+  ADD KEY `GMSFault` (`GMSId`),
+  ADD KEY `GameserverFault` (`GameserverId`);
 
 --
 -- Indexes for table `game`
@@ -162,9 +260,11 @@ ALTER TABLE `game`
 --
 ALTER TABLE `gameserver`
   ADD PRIMARY KEY (`Id`),
+  ADD UNIQUE KEY `Name` (`Name`(32)),
   ADD KEY `ServerGame` (`GameId`),
   ADD KEY `ServerGMS` (`GMSId`),
-  ADD KEY `ServerOwner` (`OwnerId`);
+  ADD KEY `ServerOwner` (`OwnerId`),
+  ADD KEY `ServerGuild` (`GuildId`);
 
 --
 -- Indexes for table `gameserverport`
@@ -186,10 +286,16 @@ ALTER TABLE `gametier`
   ADD UNIQUE KEY `GameTier` (`GameId`,`TierNumber`);
 
 --
--- Indexes for table `gms`
+-- Indexes for table `gsms`
 --
-ALTER TABLE `gms`
+ALTER TABLE `gsms`
   ADD PRIMARY KEY (`Id`);
+
+--
+-- Indexes for table `guild`
+--
+ALTER TABLE `guild`
+  ADD PRIMARY KEY (`GuildId`);
 
 --
 -- Indexes for table `transaction`
@@ -204,7 +310,16 @@ ALTER TABLE `transaction`
 -- Indexes for table `user`
 --
 ALTER TABLE `user`
-  ADD PRIMARY KEY (`DiscordId`);
+  ADD PRIMARY KEY (`Id`),
+  ADD UNIQUE KEY `Email` (`Email`(255)),
+  ADD UNIQUE KEY `DiscordId` (`DiscordId`);
+
+--
+-- Indexes for table `userguild`
+--
+ALTER TABLE `userguild`
+  ADD UNIQUE KEY `UserGuild` (`userId`,`guildId`),
+  ADD KEY `MemberGuild` (`guildId`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -217,9 +332,15 @@ ALTER TABLE `game`
   MODIFY `Id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `gms`
+-- AUTO_INCREMENT for table `gameserver`
 --
-ALTER TABLE `gms`
+ALTER TABLE `gameserver`
+  MODIFY `Id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `gsms`
+--
+ALTER TABLE `gsms`
   MODIFY `Id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
@@ -229,16 +350,31 @@ ALTER TABLE `transaction`
   MODIFY `Id` int(11) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `user`
+--
+ALTER TABLE `user`
+  MODIFY `Id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT;
+
+--
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `error`
+--
+ALTER TABLE `error`
+  ADD CONSTRAINT `GMSFault` FOREIGN KEY (`GMSId`) REFERENCES `gsms` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `GameserverFault` FOREIGN KEY (`GameserverId`) REFERENCES `gameserver` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `TransactionFault` FOREIGN KEY (`TransactionId`) REFERENCES `transaction` (`Id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `gameserver`
 --
 ALTER TABLE `gameserver`
-  ADD CONSTRAINT `ServerGMS` FOREIGN KEY (`GMSId`) REFERENCES `gms` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `ServerGMS` FOREIGN KEY (`GMSId`) REFERENCES `gsms` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
   ADD CONSTRAINT `ServerGame` FOREIGN KEY (`GameId`) REFERENCES `game` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `ServerOwner` FOREIGN KEY (`OwnerId`) REFERENCES `user` (`DiscordID`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `ServerGuild` FOREIGN KEY (`GuildId`) REFERENCES `guild` (`GuildId`) ON DELETE NO ACTION ON UPDATE CASCADE,
+  ADD CONSTRAINT `ServerOwner` FOREIGN KEY (`OwnerId`) REFERENCES `user` (`DiscordId`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
 -- Constraints for table `gameserverport`
@@ -252,7 +388,7 @@ ALTER TABLE `gameserverport`
 --
 ALTER TABLE `gamesupport`
   ADD CONSTRAINT `SupportedGame` FOREIGN KEY (`GameID`) REFERENCES `game` (`Id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  ADD CONSTRAINT `SupportingServer` FOREIGN KEY (`ServerID`) REFERENCES `gms` (`Id`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `SupportingServer` FOREIGN KEY (`ServerID`) REFERENCES `gsms` (`Id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
 -- Constraints for table `gametier`
@@ -265,7 +401,13 @@ ALTER TABLE `gametier`
 --
 ALTER TABLE `transaction`
   ADD CONSTRAINT `TransactionServer` FOREIGN KEY (`ServerId`) REFERENCES `gameserver` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `TransactionUser` FOREIGN KEY (`UserId`) REFERENCES `user` (`DiscordID`) ON DELETE NO ACTION ON UPDATE CASCADE;
+  ADD CONSTRAINT `TransactionUser` FOREIGN KEY (`UserId`) REFERENCES `user` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE;
+
+--
+-- Constraints for table `userguild`
+--
+ALTER TABLE `userguild`
+  ADD CONSTRAINT `MemberGuild` FOREIGN KEY (`guildId`) REFERENCES `guild` (`GuildId`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
