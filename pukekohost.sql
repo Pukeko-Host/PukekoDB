@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Feb 24, 2020 at 02:03 PM
+-- Generation Time: Apr 29, 2020 at 05:10 PM
 -- Server version: 10.3.22-MariaDB-0+deb10u1-log
 -- PHP Version: 7.3.14-1~deb10u1
 
@@ -23,37 +23,6 @@ SET time_zone = "+00:00";
 --
 CREATE DATABASE IF NOT EXISTS `pukekohost` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `pukekohost`;
-
-DELIMITER $$
---
--- Procedures
---
-DROP PROCEDURE IF EXISTS `AddGuild`$$
-CREATE DEFINER=`takahe`@`localhost` PROCEDURE `AddGuild` (IN `pId` BIGINT(22) UNSIGNED, IN `pIcon` VARCHAR(34), IN `pName` VARCHAR(100) CHARSET utf8mb4, IN `pUserId` BIGINT(22) UNSIGNED)  BEGIN
-	IF EXISTS(SELECT GuildId FROM guild WHERE GuildId = pId) THEN
-    	UPDATE guild SET Icon = pIcon, Name = pName WHERE GuildId = pId;
-    ELSE
-    	INSERT INTO guild(GuildId,Icon,Name) VALUES(pId,pIcon,pName);
-    END IF;
-    IF NOT EXISTS(SELECT * FROM userguild WHERE userId = pUserId AND guildId = pId) THEN
-   		INSERT INTO userguild(userId,guildId) VALUES(pUserId,pId);
-    END IF;
-END$$
-
-DROP PROCEDURE IF EXISTS `AddUser`$$
-CREATE DEFINER=`takahe`@`localhost` PROCEDURE `AddUser` (IN `pId` BIGINT(22) UNSIGNED, IN `pUsername` VARCHAR(32) CHARSET utf8, IN `pDiscriminator` SMALLINT(4) UNSIGNED, IN `pEmail` TINYTEXT, OUT `UserId` INT UNSIGNED)  BEGIN
-    IF EXISTS(SELECT DiscordId FROM user WHERE DiscordId = pId) THEN
-    	IF pUsername IS NOT NULL THEN
-    		UPDATE user SET Username = pUsername, Discriminator = pDiscriminator, Email = pEmail WHERE DiscordId = pId;
-    	END IF;
-    ELSE
-		INSERT INTO user(DiscordId,Username,Discriminator,Email)
-		VALUES(pId, pUsername, pDiscriminator, pEmail);
-	END IF;
-    SELECT Id INTO @UserId FROM user WHERE DiscordId = pId;
-END$$
-
-DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -179,19 +148,6 @@ CREATE TABLE `gsms` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `guild`
---
-
-DROP TABLE IF EXISTS `guild`;
-CREATE TABLE `guild` (
-  `GuildId` bigint(22) UNSIGNED NOT NULL,
-  `Icon` varchar(34) NOT NULL,
-  `Name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `transaction`
 --
 
@@ -292,12 +248,6 @@ ALTER TABLE `gsms`
   ADD PRIMARY KEY (`Id`);
 
 --
--- Indexes for table `guild`
---
-ALTER TABLE `guild`
-  ADD PRIMARY KEY (`GuildId`);
-
---
 -- Indexes for table `transaction`
 --
 ALTER TABLE `transaction`
@@ -373,7 +323,6 @@ ALTER TABLE `error`
 ALTER TABLE `gameserver`
   ADD CONSTRAINT `ServerGMS` FOREIGN KEY (`GMSId`) REFERENCES `gsms` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
   ADD CONSTRAINT `ServerGame` FOREIGN KEY (`GameId`) REFERENCES `game` (`Id`) ON DELETE NO ACTION ON UPDATE CASCADE,
-  ADD CONSTRAINT `ServerGuild` FOREIGN KEY (`GuildId`) REFERENCES `guild` (`GuildId`) ON DELETE NO ACTION ON UPDATE CASCADE,
   ADD CONSTRAINT `ServerOwner` FOREIGN KEY (`OwnerId`) REFERENCES `user` (`DiscordId`) ON DELETE NO ACTION ON UPDATE CASCADE;
 
 --
@@ -407,7 +356,7 @@ ALTER TABLE `transaction`
 -- Constraints for table `userguild`
 --
 ALTER TABLE `userguild`
-  ADD CONSTRAINT `MemberGuild` FOREIGN KEY (`guildId`) REFERENCES `guild` (`GuildId`) ON DELETE CASCADE ON UPDATE CASCADE;
+  ADD CONSTRAINT `GuildUser` FOREIGN KEY (`userId`) REFERENCES `user` (`DiscordId`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
