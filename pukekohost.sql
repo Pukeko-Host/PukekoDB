@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 29, 2020 at 05:10 PM
+-- Generation Time: Jun 22, 2020 at 10:01 PM
 -- Server version: 10.3.22-MariaDB-0+deb10u1-log
 -- PHP Version: 7.3.14-1~deb10u1
 
@@ -11,12 +11,6 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 SET AUTOCOMMIT = 0;
 START TRANSACTION;
 SET time_zone = "+00:00";
-
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
 
 --
 -- Database: `pukekohost`
@@ -106,8 +100,8 @@ CREATE TABLE `gameserverport` (
 
 DROP TABLE IF EXISTS `gamesupport`;
 CREATE TABLE `gamesupport` (
-  `ServerID` int(11) UNSIGNED NOT NULL,
-  `GameID` int(11) UNSIGNED NOT NULL
+  `ServerId` int(11) UNSIGNED NOT NULL,
+  `GameId` int(11) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- --------------------------------------------------------
@@ -122,7 +116,7 @@ CREATE TABLE `gametier` (
   `TierNumber` tinyint(1) UNSIGNED NOT NULL DEFAULT 1,
   `Name` varchar(20) NOT NULL,
   `Icon` varchar(255) NOT NULL,
-  `TierPerks` varchar(1000) NOT NULL,
+  `Perks` varchar(1000) NOT NULL,
   `PriceMultiplier` float(4,2) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -140,8 +134,6 @@ CREATE TABLE `gsms` (
   `InitRate` decimal(4,2) NOT NULL DEFAULT 0.99 COMMENT 'One time initialization fee',
   `UptimeRate` decimal(4,2) NOT NULL DEFAULT 0.05 COMMENT 'Hourly rate',
   `DomainName` varchar(64) NOT NULL,
-  `IPv4` varchar(15) DEFAULT NULL COMMENT '0.0.0.0',
-  `IPv6` varchar(39) DEFAULT NULL COMMENT '::1',
   `UpDown` tinyint(1) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -186,10 +178,10 @@ CREATE TABLE `user` (
 
 DROP TABLE IF EXISTS `userguild`;
 CREATE TABLE `userguild` (
-  `userId` bigint(22) UNSIGNED NOT NULL,
-  `guildId` bigint(22) UNSIGNED NOT NULL,
+  `UserId` bigint(22) UNSIGNED NOT NULL,
+  `GuildId` bigint(22) UNSIGNED NOT NULL,
   `Pos` tinyint(3) UNSIGNED DEFAULT NULL,
-  `guildFolder` bigint(22) UNSIGNED DEFAULT NULL
+  `GuildFolder` bigint(22) UNSIGNED DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
@@ -232,8 +224,8 @@ ALTER TABLE `gameserverport`
 -- Indexes for table `gamesupport`
 --
 ALTER TABLE `gamesupport`
-  ADD UNIQUE KEY `UniqueGameTier` (`ServerID`,`GameID`) USING BTREE,
-  ADD KEY `SupportedGame` (`GameID`);
+  ADD UNIQUE KEY `UniqueGameTier` (`ServerId`,`GameId`) USING BTREE,
+  ADD KEY `SupportedGame` (`GameId`);
 
 --
 -- Indexes for table `gametier`
@@ -268,8 +260,8 @@ ALTER TABLE `user`
 -- Indexes for table `userguild`
 --
 ALTER TABLE `userguild`
-  ADD UNIQUE KEY `UserGuild` (`userId`,`guildId`),
-  ADD KEY `MemberGuild` (`guildId`);
+  ADD UNIQUE KEY `UserGuild` (`UserId`,`GuildId`),
+  ADD KEY `MemberGuild` (`GuildId`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -358,7 +350,3 @@ ALTER TABLE `transaction`
 ALTER TABLE `userguild`
   ADD CONSTRAINT `GuildUser` FOREIGN KEY (`userId`) REFERENCES `user` (`DiscordId`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
